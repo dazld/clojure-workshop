@@ -43,48 +43,60 @@
 
   ;; 2. Show the first 300 characters.
   ;;    Hint: subs
+  (subs book 0 300)
 
   ;; 3. Split the book into words, all in lower case, and call it words.
   ;;    First try this. What goes wrong?
   (re-seq #"\w+" "coração")
   ;;    In Java regular expressions, \w only matches English letters. \p{L}
   ;;    matches a letter in any language.
-  ;;    Hint: str/lower-case, re-seq, #"\p{L}+". Then (def words ...)
+  ;;    Hint: str/lower-case, re-seq, #"\p{L}+"
+  (def words (re-seq #"\p{L}+" (str/lower-case book)))
+  (take 20 words)
 
   ;; 4. How many words are there? How many different words?
   ;;    Hint: count, set
+  (count words)
+  (count (set words))
 
   ;; 5. The 20 most common words.
   ;;    Hint: frequencies, sort-by, take. A map entry works with key and val.
-  ;;    Keep the frequencies for later: (def freqs ...)
+  (def freqs (frequencies words))
+  (->> freqs (sort-by val >) (take 20))
 
   ;; 6. Those are mostly little words like "de" and "que". Leave out the
   ;;    stop-words defined above, and look again.
   ;;    Hint: remove. A set is a function.
+  (->> words (remove stop-words) frequencies (sort-by val >) (take 20))
 
   ;; 7. How often are the main characters named: carlos, ega, maria and
   ;;    affonso? Now try "afonso". Why the difference?
   ;;    Hint: select-keys, or call freqs as a function: (freqs "carlos")
+  (select-keys freqs ["carlos" "ega" "maria" "affonso" "afonso"])
 
   ;; 8. The ten longest different words.
   ;;    Hint: distinct, sort-by, count
+  (->> words distinct (sort-by count >) (take 10))
 
   ;; 9. The average word length. What kind of number comes back?
   ;;    Hint: reduce, map count. Then try double.
+  (/ (reduce + (map count words)) (count words))
+  (double (/ (reduce + (map count words)) (count words)))
 
   ;; 10. Split the book into its chapters, and count them. Each chapter
   ;;     starts with a Roman numeral alone on a line, like "IV".
   ;;     Hint: str/split with #"(?m)^[IVXLC]+$". (?m) makes ^ and $ match at
   ;;     the start and end of every line. What is the first piece?
-  ;;     Then (def chapters ...)
+  (def chapters (rest (str/split book #"(?m)^[IVXLC]+$")))
+  (count chapters)
 
   ;; 11. How many words are in each chapter?
   ;;     Hint: map over chapters, with re-seq and count from exercise 3
+  (map #(count (re-seq #"\p{L}+" %)) chapters)
 
   ;; 12. Show the main characters as a bar chart in the View pane.
   ;;     Hint: bars is defined above. tap> sends a value to the View pane.
-  ;;     Replace these made-up numbers with the real ones:
-  (tap> (bars {"carlos" 3 "ega" 2 "maria" 1})))
+  (tap> (bars (select-keys freqs ["carlos" "ega" "maria" "affonso"]))))
 
 ;; ---------------------------------------------------------------------------
 ;; Stretch goals
@@ -104,3 +116,40 @@
 ;;
 ;; D. Words that come in pairs: the most common two-word phrases.
 ;;    Hint: (partition 2 1 words) gives each word with the next one
+
+(comment
+
+  ;; A. Who appears when. The early Marias are Carlos's mother, Maria
+  ;;    Monforte; from chapter 10 it is Maria Eduarda.
+  (defn mentions [word]
+    (map (fn [n chapter]
+           [n (count (filter #{word} (re-seq #"\p{L}+" (str/lower-case chapter))))])
+         (range 1 19)
+         chapters))
+  (tap> (bars (mentions "maria")))
+  (tap> (bars (mentions "ega")))
+
+  ;; B. Straight from Project Gutenberg
+  (def raw (slurp gutenberg-url))
+  (def from-gutenberg
+    (-> raw
+        (str/split #"\*\*\* START OF[^\n]*\n" 2)
+        second
+        (str/split #"\*\*\* END OF" 2)
+        first))
+  (count from-gutenberg)
+
+  ;; C. Another book
+  (defn average-word-length [text]
+    (let [ws (re-seq #"\p{L}+" (str/lower-case text))]
+      (double (/ (reduce + (map count ws)) (count ws)))))
+  (def mandarim (slurp "https://www.gutenberg.org/cache/epub/16384/pg16384.txt"))
+  [(average-word-length book) (average-word-length mandarim)]
+
+  ;; D. The most common two-word phrases, without stop words
+  (->> words
+       (partition 2 1)
+       (remove #(some stop-words %))
+       frequencies
+       (sort-by val >)
+       (take 10)))

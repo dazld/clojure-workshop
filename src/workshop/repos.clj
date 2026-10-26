@@ -21,35 +21,48 @@
 (comment
 
   ;; 1. How many repos are there?
-  ;;    Hint: count
   (count repos)
 
   ;; 2. Look at the first repo. What keys does it have?
-  ;;    Hint: first, keys
+  (first repos)
+  (keys (first repos))
 
   ;; 3. The names of the first ten repos
-  ;;    Hint: map, take, and remember keywords are functions
+  (->> repos (map :name) (take 10))
 
   ;; 4. How many repos does each org (:owner) have?
-  ;;    Hint: frequencies
+  (frequencies (map :owner repos))
 
   ;; 5. The names of the archived repos
-  ;;    Hint: filter. What does (:archived repo) return?
+  (->> repos (filter :archived) (map :name))
 
   ;; 6. The ten most-starred repos, as [name stars] pairs
-  ;;    Hint: sort-by takes an optional comparator. Look up juxt.
+  (->> repos
+       (sort-by :stargazers_count >)
+       (take 10)
+       (map (juxt :name :stargazers_count)))
 
   ;; 7. Repos per language. Which language is most common?
-  ;;    Hint: frequencies, sort-by. A map entry works with key and val.
+  (->> repos
+       (map :language)
+       frequencies
+       (sort-by val >))
 
   ;; 8. Total stars per language
-  ;;    Hint: group-by, then reduce over each group
+  (->> repos
+       (group-by :language)
+       (map (fn [[lang rs]] [lang (reduce + (map :stargazers_count rs))]))
+       (sort-by second >))
 
   ;; 9. How many repos were created each year? (:created_at is "2012-03-21T...")
-  ;;    Hint: subs, frequencies. (into (sorted-map) ...) sorts a map.
+  (->> repos
+       (map #(subs (:created_at %) 0 4))
+       frequencies
+       (into (sorted-map)))
 
   ;; 10. Print the top five as a table. Try clojure.pprint/print-table.
-  ;;     It is already required as pp.
+  (pp/print-table [:name :language :stargazers_count]
+                  (->> repos (sort-by :stargazers_count >) (take 5)))
 
   ;; 11. Write a function (top-repos repos {:lang "Clojure" :top 5}) that
   ;;     filters by language when :lang is given, and returns the :top most
@@ -59,8 +72,10 @@
   (top-repos repos {:top 3}))
 
 (defn top-repos [repos {:keys [lang top]}]
-  ;; Exercise 11: filter by lang when it is given, sort by stars, take top.
-  (take top repos))
+  (->> repos
+       (filter #(or (nil? lang) (= lang (:language %))))
+       (sort-by :stargazers_count >)
+       (take top)))
 
 (def cli-spec
   {:lang {:desc "Only repos in this language"}
