@@ -1,0 +1,6 @@
+{:paths ["src"]
+ :deps  {org.clojure/clojure {:mvn/version "1.12.3"}
+         cheshire/cheshire   {:mvn/version "6.2.0"}
+         org.babashka/cli    {:mvn/version "0.12.91"}
+         hiccup/hiccup       {:mvn/version "2.0.0"}
+         http-kit/http-kit   {:mvn/version "2.8.1"}}}

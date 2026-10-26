@@ -1,0 +1,20 @@
+{:paths ["src"]
+
+ ;; Each task requires only its own namespace, so a broken student file
+ ;; cannot stop the editor from starting.
+ :tasks
+ {editor     {:doc      "The workshop editor: open http://localhost:1234"
+              :requires ([workshop.editor :as editor])
+              :task     (apply editor/-main *command-line-args*)}
+
+  repos      {:doc      "Run the workshop script: bb repos --lang Clojure --top 5"
+              :requires ([workshop.repos :as repos])
+              :task     (apply repos/-main *command-line-args*)}
+
+  serve      {:doc      "Stretch goal: serve the report as HTML on http://localhost:8080"
+              :requires ([workshop.repos :as repos])
+              :task     (do (repos/serve) (deref (promise)))}
+
+  fetch-data {:doc      "Re-download data/repos.json from the GitHub API (60 req/hr per IP without GITHUB_TOKEN)"
+              :requires ([workshop.fetch :as fetch])
+              :task     (fetch/-main)}}}

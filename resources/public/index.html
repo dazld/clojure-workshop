@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Workshop Editor</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/vendor/codemirror.css">
+  <link rel="stylesheet" href="/vendor/show-hint.css">
+  <link rel="stylesheet" href="/editor.css">
+</head>
+<body>
+  <header class="toolbar">
+    <nav id="tabs" class="tabs" aria-label="Files"></nav>
+    <div class="toolbar-right">
+      <span id="saved" class="saved" aria-live="polite"></span>
+      <label class="mode" title="What Ctrl/⌘+Enter evaluates. Alt+Enter does the other.">Ctrl/⌘+Enter
+        <select id="eval-mode">
+          <option value="top">top-level form</option>
+          <option value="current">form at cursor</option>
+        </select>
+      </label>
+      <label class="mode">Parinfer
+        <select id="mode">
+          <option value="smart">smart</option>
+          <option value="indent">indent</option>
+          <option value="paren">paren</option>
+        </select>
+      </label>
+      <button id="help-button" type="button" aria-expanded="false" aria-controls="help">Keys</button>
+      <button id="restart" type="button" title="Stops everything running and starts a fresh Clojure">Restart</button>
+      <span id="status" class="status" data-state="restarting">Starting…</span>
+    </div>
+  </header>
+
+  <div id="help" class="help" hidden>
+    <table class="keys">
+      <thead><tr><th>Command</th><th>Keys</th><th><button id="reset-keys" type="button">Reset keys</button></th></tr></thead>
+      <tbody id="keys-table"></tbody>
+    </table>
+    <p id="emacs-keys-option"><label><input id="emacs-keys" type="checkbox"> Emacs keys, as on a Mac: Ctrl+A and Ctrl+E go to the start and end of the line, Ctrl+K deletes to the end. Ctrl+A no longer selects everything</label></p>
+    <dl>
+      <dt>Top-level form</dt><dd>The outermost form around the cursor. Inside <code>(comment …)</code>, each form in it counts as top level, as in Cursive. The Ctrl/⌘+Enter setting above swaps the two evaluate commands</dd>
+      <dt>Evaluate with a selection</dt><dd>Evaluates exactly what is selected. Expand the selection to a form, then evaluate it</dd>
+      <dt>Click a result</dt><dd>Show it pretty-printed</dd>
+      <dt><code>(tap&gt; x)</code></dt><dd>Show <code>x</code> in the View pane. Hiccup like <code>[:h1 "hi"]</code> renders as HTML</dd>
+    </dl>
+    <p>Files save automatically. Parinfer keeps the brackets matching your indentation: indent a line to move it into a form, dedent it to move it out. To change a key, press Change and then the new keys; your choice is kept in this browser.</p>
+  </div>
+
+  <main class="layout">
+    <section class="editor-pane" aria-label="Editor">
+      <div id="editor"></div>
+    </section>
+    <section class="side">
+      <div class="pane view-pane">
+        <div class="pane-head"><h2>View</h2><button type="button" data-clear="view">Clear</button></div>
+        <div id="view" class="pane-body view"><p class="hint">Values you <code>tap&gt;</code> appear here.</p></div>
+      </div>
+      <div class="pane output-pane">
+        <div class="pane-head"><h2>Output</h2><button type="button" data-clear="output">Clear</button></div>
+        <pre id="output" class="pane-body output"></pre>
+      </div>
+    </section>
+  </main>
+
+  <script src="/vendor/codemirror.js"></script>
+  <script src="/vendor/clojure.js"></script>
+  <script src="/vendor/matchbrackets.js"></script>
+  <script src="/vendor/show-hint.js"></script>
+  <script src="/vendor/parinfer.js"></script>
+  <script src="/vendor/parinfer-codemirror.js"></script>
+  <script src="/forms.js"></script>
+  <script src="/editor.js"></script>
+</body>
+</html>
