@@ -1,10 +1,20 @@
 # Clojure from zero, with Babashka
 
-An evening introduction to Clojure. We use [Babashka](https://babashka.org)
-(`bb`), a fast-starting Clojure for scripting. It is one binary with no JVM to
-install, and it comes with JSON, CSV, HTTP and an HTML server built in.
+Put together for the 28th October meetballs event in Loulé.
 
-## Before the workshop (5 minutes)
+This is a small, contained, and highly opinionated environment to play around 
+with Clojure. Its purpose is to facilitate playing with the language before having to 
+commit to setting up tooling, IDEs, JDKs and all the other plumbing. 
+
+It is a small server and a  browser based exploration environment that allows an "IDE-like" experience 
+out of the box. It offers a code-editor with auto-complete, parinfer, inline evaluation, a `(tap> ...)` view
+that knows how to render HTML, and a console for `(prn ...)` all in one view. 
+
+This repo uses [Babashka](https://babashka.org)
+(`bb`), a fast-starting Clojure for scripting. It is one binary with no JVM to
+install, and it comes with JSON, CSV, HTTP and an HTTP server built in.
+
+## Before the workshop
 
 Please do this at home.
 
@@ -25,7 +35,7 @@ Please do this at home.
      scoop install babashka
      ```
 
-2. **Clone this repo and check it works**
+3. **Clone this repo and check it works**
 
    ```sh
    git clone https://github.com/dazld/clojure-workshop.git
@@ -128,6 +138,7 @@ The same files work in any Clojure editor. With
    form. That is the other way round from the workshop editor's default.
 
 Calva uses Paredit instead of Parinfer, but it keeps brackets balanced too.
+
 Other editors (Emacs/CIDER, Neovim/Conjure, IntelliJ/Cursive): run
 `bb nrepl-server 1667` in this folder and connect to port 1667.
 
