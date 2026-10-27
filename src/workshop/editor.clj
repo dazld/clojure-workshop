@@ -14,6 +14,8 @@
             [clojure.string :as str]
             [org.httpkit.server :as server]))
 
+'(1 12 )
+
 (def default-port 1234)
 (defonce port (atom default-port))
 (def runtime-heap "-Xmx1g")
@@ -241,6 +243,18 @@
                  (not (hidden? (rel-path f))))
         f))))
 
+;; The browser sends back the version it last read or saved. If the file has
+;; changed since, another editor wrote it, and the save is refused rather
+;; than overwriting that.
+(defn- version [text]
+  (-> (java.security.MessageDigest/getInstance "SHA-1")
+      (.digest (.getBytes ^String text "UTF-8"))
+      (->> (BigInteger. 1))
+      (.toString 16)))
+
+(defn- read-src [f]
+  (if (fs/exists? f) (slurp (fs/file f)) ""))
+
 (defn- list-files []
   (->> (fs/glob src-dir "**.clj")
        (map rel-path)
@@ -305,14 +319,19 @@
 
       [:get "/api/file"]
       (if-let [f (src-file path)]
-        (json-response {:path path :text (if (fs/exists? f) (slurp (fs/file f)) "")})
+        (let [text (read-src f)]
+          (json-response {:path path :text text :version (version text)}))
         {:status 400 :body "not a file under src/"})
 
       [:post "/api/file"]
       (if-let [f (src-file path)]
-        (do (fs/create-dirs (fs/parent f))
-            (spit (fs/file f) (slurp body))
-            (json-response {:saved path}))
+        (let [on-disk (read-src f)]
+          (if (not= (version on-disk) (get headers "x-workshop-version"))
+            (assoc (json-response {:text on-disk :version (version on-disk)}) :status 409)
+            (let [text (slurp body)]
+              (fs/create-dirs (fs/parent f))
+              (spit (fs/file f) text)
+              (json-response {:saved path :version (version text)}))))
         {:status 400 :body "not a file under src/"})
 
       [:post "/api/eval"]

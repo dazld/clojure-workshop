@@ -45,11 +45,16 @@
       <dt>Click a result</dt><dd>Show it pretty-printed</dd>
       <dt><code>(tap&gt; x)</code></dt><dd>Show <code>x</code> in the View pane. Hiccup like <code>[:h1 "hi"]</code> renders as HTML</dd>
     </dl>
-    <p>Files save automatically. Parinfer keeps the brackets matching your indentation: indent a line to move it into a form, dedent it to move it out. To change a key, press Change and then the new keys; your choice is kept in this browser.</p>
+    <p>Files save automatically. A file changed in another editor shows its new text when you come back to this tab. Parinfer keeps the brackets matching your indentation: indent a line to move it into a form, dedent it to move it out. To change a key, press Change and then the new keys; your choice is kept in this browser.</p>
   </div>
 
   <main class="layout">
     <section class="editor-pane" aria-label="Editor">
+      <div id="conflict" class="conflict" role="alert" hidden>
+        <span>This file was changed in another editor while you had unsaved changes here.</span>
+        <button id="use-disk" type="button">Use the other editor's version</button>
+        <button id="keep-mine" type="button">Keep mine</button>
+      </div>
       <div id="editor"></div>
     </section>
     <section class="side">

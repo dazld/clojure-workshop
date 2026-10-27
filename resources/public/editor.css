@@ -138,8 +138,23 @@ kbd {
   grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
 }
 
-.editor-pane { min-height: 0; border-right: 1px solid var(--border); }
-#editor, #editor .CodeMirror { height: 100%; }
+.editor-pane { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--border); }
+#editor { flex: 1; min-height: 0; }
+#editor .CodeMirror { height: 100%; }
+
+.conflict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.conflict[hidden] { display: none; }
+.conflict span { flex: 1; min-width: 12em; }
 
 .side { display: flex; flex-direction: column; min-height: 0; }
 .pane { display: flex; flex-direction: column; min-height: 0; }

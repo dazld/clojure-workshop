@@ -457,9 +457,10 @@
 
   async function openFile(path) {
     if (!files[path]) {
-      const { text } = await (await api("/api/file?path=" + encodeURIComponent(path))).json();
+      const { text, version } = await (await api("/api/file?path=" + encodeURIComponent(path))).json();
       const doc = CodeMirror.Doc(text, "clojure");
-      files[path] = { path, doc, savedText: text, results: [], loadedIn: null, saveTimer: null, saveFailed: false };
+      files[path] = { path, doc, savedText: text, version, conflict: null, results: [],
+                      loadedIn: null, saveTimer: null, saveFailed: false, saving: null };
     }
     currentPath = path;
     cm.swapDoc(files[path].doc);
@@ -472,6 +473,7 @@
     location.hash = path;
     renderTabs();
     updateSaved();
+    renderConflict();
     cm.focus();
   }
 
@@ -484,24 +486,39 @@
     renderTabs();
   });
 
-  async function save(path) {
+  // One save at a time per file, so each sends the version the last one got
+  // back. Two at once would look to bb like another editor had saved.
+  function save(path) {
     const f = files[path];
     if (!f) return;
     clearTimeout(f.saveTimer);
+    f.saving = (f.saving || Promise.resolve()).then(() => saveNow(f));
+    return f.saving;
+  }
+
+  async function saveNow(f) {
     const text = f.doc.getValue();
-    if (text === f.savedText) return;
+    if (text === f.savedText || f.conflict) return;
     try {
-      const res = await api("/api/file?path=" + encodeURIComponent(path), { method: "POST", body: text });
-      if (!res.ok) throw new Error(res.status);
-      f.savedText = text;
+      const res = await api("/api/file?path=" + encodeURIComponent(f.path), {
+        method: "POST", body: text, headers: { "X-Workshop-Version": f.version },
+      });
+      if (res.status === 409) {
+        f.conflict = await res.json();
+      } else {
+        if (!res.ok) throw new Error(res.status);
+        f.version = (await res.json()).version;
+        f.savedText = text;
+      }
       f.saveFailed = false;
     } catch (_) {
       // The editor is gone or restarting. Keep the edits and try again.
       f.saveFailed = true;
-      f.saveTimer = setTimeout(() => save(path), 2000);
+      f.saveTimer = setTimeout(() => save(f.path), 2000);
     }
     updateSaved();
     renderTabs();
+    renderConflict();
   }
 
   function dirty(f) { return f.doc.getValue() !== f.savedText; }
@@ -509,9 +526,95 @@
   function updateSaved() {
     const f = files[currentPath];
     $("saved").textContent = !f || !dirty(f) ? "Saved"
+      : f.conflict ? "Not saved: changed in another editor"
       : f.saveFailed ? "Not saved yet: waiting for bb editor"
       : "Saving…";
   }
+
+  // -------------------------------------------------------------------------
+  // Files changed in another editor. Coming back to this tab checks each
+  // open file. One with no unsaved changes here takes the new text; one with
+  // changes on both sides asks which to keep.
+
+  let checking = null;
+  function checkDisk() {
+    checking = checking || refreshFromDisk().finally(() => { checking = null; });
+    return checking;
+  }
+
+  async function refreshFromDisk() {
+    try {
+      const listed = (await (await api("/api/files")).json()).files;
+      // Keep the tabs of open files even if their file has gone.
+      fileList = [...new Set([...listed, ...Object.keys(files)])].sort();
+      for (const f of Object.values(files)) {
+        if (!listed.includes(f.path)) continue;
+        await f.saving;
+        const disk = await (await api("/api/file?path=" + encodeURIComponent(f.path))).json();
+        if (disk.version === f.version) continue;
+        if (dirty(f)) f.conflict = disk;
+        else takeDiskVersion(f, disk);
+      }
+    } catch (_) {
+      return; // bb editor is not there; the next visit tries again
+    }
+    updateSaved();
+    renderTabs();
+    renderConflict();
+  }
+
+  function takeDiskVersion(f, disk) {
+    f.savedText = disk.text;
+    f.version = disk.version;
+    f.conflict = null;
+    f.loadedIn = null; // the runtime has the old definitions: load again
+    replaceText(f.doc, disk.text);
+  }
+
+  // Replace only the part that changed, so the cursor and the results
+  // elsewhere stay put. Parinfer leaves "setValue" changes as they are, so
+  // the text is exactly what the other editor wrote. Undo brings back the
+  // text from before.
+  function replaceText(doc, text) {
+    const old = doc.getValue();
+    let start = 0;
+    while (start < old.length && start < text.length && old[start] === text[start]) start++;
+    let end = 0;
+    while (end < old.length - start && end < text.length - start &&
+           old[old.length - 1 - end] === text[text.length - 1 - end]) end++;
+    doc.replaceRange(text.slice(start, text.length - end),
+                     doc.posFromIndex(start), doc.posFromIndex(old.length - end), "setValue");
+  }
+
+  function renderConflict() {
+    const f = files[currentPath];
+    $("conflict").hidden = !(f && f.conflict);
+  }
+
+  $("use-disk").addEventListener("click", () => {
+    const f = files[currentPath];
+    if (f && f.conflict) takeDiskVersion(f, f.conflict);
+    updateSaved();
+    renderTabs();
+    renderConflict();
+    cm.focus();
+  });
+
+  $("keep-mine").addEventListener("click", () => {
+    const f = files[currentPath];
+    if (!f || !f.conflict) return;
+    // Save over the other editor's version, knowingly.
+    f.version = f.conflict.version;
+    f.conflict = null;
+    renderConflict();
+    save(f.path);
+    cm.focus();
+  });
+
+  window.addEventListener("focus", checkDisk);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") checkDisk();
+  });
 
   let fileList = [];
   function renderTabs() {
@@ -803,16 +906,18 @@
   window.addEventListener("beforeunload", (e) => {
     const unsaved = Object.values(files).filter(dirty);
     unsaved.forEach((f) => {
+      if (f.conflict) return;
       // keepalive lets the request finish after the page has gone.
       fetch("/api/file?path=" + encodeURIComponent(f.path), {
         method: "POST",
         body: f.doc.getValue(),
-        headers: { "X-Workshop-Token": token },
+        headers: { "X-Workshop-Token": token, "X-Workshop-Version": f.version },
         keepalive: true,
       });
     });
-    // If saving is already failing, ask before throwing the edits away.
-    if (unsaved.some((f) => f.saveFailed)) e.preventDefault();
+    // If saving is already failing, or waits on a choice, ask before
+    // throwing the edits away.
+    if (unsaved.some((f) => f.saveFailed || f.conflict)) e.preventDefault();
   });
 
   // -------------------------------------------------------------------------

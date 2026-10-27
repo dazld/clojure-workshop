@@ -101,6 +101,9 @@ Linux desktops they switch workspaces: give slurp and barf other keys there.
 - **`(tap> x)`** shows `x` in the View pane. Hiccup such as
   `[:h1 "hello"]` renders as HTML, and anything else is pretty-printed.
 - **Files save automatically**, so `bb repos` in a terminal runs what you see.
+- **Another editor is fine too.** Save there, come back to the browser, and
+  it shows the new text. If both have unsaved changes, it asks which to keep
+  rather than overwriting either.
 - **Restart** stops everything that is running and starts a fresh Clojure.
   Use it when something never finishes. Your files are not affected.
 
