@@ -91,6 +91,18 @@
     { id: "splice", keys: ["Alt-S"],
       label: () => "Splice: remove the brackets around the cursor",
       run: () => splice() },
+    { id: "slurp-forward", keys: ["Ctrl-Alt-Right"],
+      label: () => "Slurp: pull the next form into the brackets",
+      run: () => slurpForward() },
+    { id: "barf-forward", keys: ["Ctrl-Alt-Left"],
+      label: () => "Barf: push the last form out of the brackets",
+      run: () => barfForward() },
+    { id: "slurp-backward", keys: ["Shift-Ctrl-Alt-Left"],
+      label: () => "Slurp backward: pull the form before into the brackets",
+      run: () => slurpBackward() },
+    { id: "barf-backward", keys: ["Shift-Ctrl-Alt-Right"],
+      label: () => "Barf backward: push the first form out of the brackets",
+      run: () => barfBackward() },
     { id: "complete", keys: ["Ctrl-Space", "Alt-Space"],
       label: () => "Complete the name at the cursor",
       run: () => complete() },
@@ -283,14 +295,89 @@
     const text = doc.getValue();
     const node = F.innermostList(F.parse(text), doc.indexFromPos(doc.getCursor()));
     if (!node) return;
-    // node.start can include a prefix such as #{ or '(: remove it too.
-    const openEnd = text.indexOf(node.open, node.start) + 1;
+    editBrackets([[node.end - 1, 1, ""], [node.start, openEnd(text, node) - node.start, ""]]);
+  }
+
+  // node.start can include a prefix such as #{ or '(: the opening bracket
+  // ends after it.
+  function openEnd(text, node) { return text.indexOf(node.open, node.start) + 1; }
+
+  // Each edit is [index, length to remove, text to insert], with indexes in
+  // the text before any edit. The last edit goes first, so the others keep
+  // their places. At the cursor, a closing bracket goes after it and an
+  // opening one before it, so the cursor stays inside the form it was in.
+  function editBrackets(edits) {
+    const doc = cm.getDoc();
+    const was = doc.indexFromPos(doc.getCursor());
+    let cursor = was;
+    for (const [at, length, insert] of edits) {
+      const closing = /^[\s)\]}]/.test(insert);
+      if (at + length < was || (at + length === was && !(length === 0 && closing))) {
+        cursor += insert.length - length;
+      }
+    }
     parinferCodeMirror.setMode(cm, "paren");
     cm.operation(() => {
-      doc.replaceRange("", doc.posFromIndex(node.end - 1), doc.posFromIndex(node.end));
-      doc.replaceRange("", doc.posFromIndex(node.start), doc.posFromIndex(openEnd));
+      for (const [at, length, insert] of edits.sort((a, b) => b[0] - a[0])) {
+        doc.replaceRange(insert, doc.posFromIndex(at), doc.posFromIndex(at + length));
+      }
+      doc.setCursor(doc.posFromIndex(cursor));
     });
     parinferCodeMirror.setMode(cm, mode);
+  }
+
+  function listsAtCursor() {
+    const doc = cm.getDoc();
+    const text = doc.getValue();
+    return { text, lists: F.listsAround(F.parse(text), doc.indexFromPos(doc.getCursor())) };
+  }
+
+  // Slurp, like paredit-forward-slurp-sexp: (a (b|) c) becomes (a (b| c)).
+  // With nothing after the innermost brackets, the ones around them slurp.
+  function slurpForward() {
+    const { text, lists } = listsAtCursor();
+    for (const { node, siblings } of lists) {
+      const next = siblings[siblings.indexOf(node) + 1];
+      if (next) return editBrackets([[node.end - 1, 1, ""], [next.end, 0, text[node.end - 1]]]);
+    }
+  }
+
+  // Barf, like paredit-forward-barf-sexp: (a (b| c)) becomes (a (b|) c).
+  function barfForward() {
+    const { text, lists } = listsAtCursor();
+    if (!lists.length) return;
+    const { node } = lists[0];
+    const kids = node.children;
+    if (!kids.length) return;
+    const close = text[node.end - 1];
+    const before = kids[kids.length - 2];
+    editBrackets([[node.end - 1, 1, ""],
+                  before ? [before.end, 0, close] : [openEnd(text, node), 0, close + " "]]);
+  }
+
+  // Slurp backward: (a b (|c)) becomes (a (b |c)).
+  function slurpBackward() {
+    const { text, lists } = listsAtCursor();
+    for (const { node, siblings } of lists) {
+      const previous = siblings[siblings.indexOf(node) - 1];
+      if (previous) {
+        const open = text.slice(node.start, openEnd(text, node));
+        return editBrackets([[node.start, open.length, ""], [previous.start, 0, open]]);
+      }
+    }
+  }
+
+  // Barf backward: (a (b |c)) becomes (a b (|c)).
+  function barfBackward() {
+    const { text, lists } = listsAtCursor();
+    if (!lists.length) return;
+    const { node } = lists[0];
+    const kids = node.children;
+    if (!kids.length) return;
+    const open = text.slice(node.start, openEnd(text, node));
+    const after = kids[1];
+    editBrackets([[node.start, open.length, ""],
+                  after ? [after.start, 0, open] : [node.end - 1, 0, " " + open]]);
   }
 
   // -------------------------------------------------------------------------

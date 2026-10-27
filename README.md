@@ -66,6 +66,10 @@ the result next to the code.
 | `Alt+↑` | Expand the selection to the next enclosing form |
 | `Alt+↓` | Contract the selection back, one step at a time |
 | `Alt+S` | Splice: remove the brackets around the cursor, so `(a (b c) d)` becomes `(a b c d)` |
+| `Ctrl+Alt+→` | Slurp: pull the next form into the brackets, so `(a (b) c)` becomes `(a (b c))` |
+| `Ctrl+Alt+←` | Barf: push the last form out, so `(a (b c))` becomes `(a (b) c)` |
+| `Shift+Ctrl+Alt+←` | Slurp backward: pull the form before in, so `(a (b))` becomes `((a b))` |
+| `Shift+Ctrl+Alt+→` | Barf backward: push the first form out, so `((a b))` becomes `(a (b))` |
 | `Ctrl+Space` or `Alt+Space` | Complete the name at the cursor. Shows each function's arguments and what it does; keep typing to narrow the list, `Enter` picks |
 | `Esc` | Clear the results shown in the editor |
 
@@ -87,6 +91,8 @@ avoid `Ctrl+↑` and `Ctrl+↓`: Mission Control takes them before the browser
 sees them. If you have more than one keyboard language on a Mac,
 `Ctrl+Space` switches between them, so use `⌥+Space` to complete. On
 Windows, `Alt+Space` opens the window menu, so use `Ctrl+Space`.
+On some Windows laptops `Ctrl+Alt+←` and `→` turn the screen, and on some
+Linux desktops they switch workspaces: give slurp and barf other keys there.
 
 - **Brackets** are handled by [Parinfer](https://shaunlebron.github.io/parinfer/):
   you indent, it moves the closing brackets to match. Indent a line to move

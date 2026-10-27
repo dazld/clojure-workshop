@@ -178,6 +178,22 @@
     return best;
   }
 
+  // The bracketed forms the cursor is inside, innermost first, each with the
+  // forms beside it: what slurp and barf move the brackets over.
+  function listsAround(forms, pos) {
+    const lists = [];
+    (function walk(nodes) {
+      for (const node of nodes) {
+        if (node.children && !node.unclosed && node.start < pos && pos < node.end) {
+          lists.unshift({ node, siblings: nodes });
+          walk(node.children);
+          return;
+        }
+      }
+    })(forms);
+    return lists;
+  }
+
   function nsOf(forms, text) {
     const nsForm = forms.find((f) => f.head === "ns");
     if (!nsForm) return { ns: null, nsForm: null };
@@ -188,5 +204,5 @@
     };
   }
 
-  root.ClojureForms = { parse, currentForm, topLevelForm, enclosing, innermostList, nsOf };
+  root.ClojureForms = { parse, currentForm, topLevelForm, enclosing, innermostList, listsAround, nsOf };
 })(this);
