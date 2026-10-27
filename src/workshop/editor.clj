@@ -378,7 +378,7 @@
 (defn -main [& args]
   (reset! port (parse-port args))
   (try
-    (server/run-server handler {:ip "127.0.0.1" :port @port :thread 16})
+    (server/run-server handler {:ip "127.0.0.1" :port @port :thread 16 :max-line 65536})
     (catch java.net.BindException e
       (exit-with
        (if (str/includes? (str (ex-message e)) "in use")

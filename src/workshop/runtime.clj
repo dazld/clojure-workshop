@@ -199,5 +199,5 @@
   ;; Only when the editor started us. Run by hand, stdin may be closed.
   (when token (exit-with-editor!))
   (when editor-url (add-tap send-to-view))
-  (server/run-server handler {:ip "127.0.0.1" :port (parse-long port)})
+  (server/run-server handler {:ip "127.0.0.1" :port (parse-long port) :max-line 65536})
   @(promise))

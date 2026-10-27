@@ -109,5 +109,6 @@
 
 (defn serve [& _]
   (when-let [stop @stop-server] (stop))
-  (reset! stop-server (server/run-server #'handler {:port 8080}))
+  ;; Big localhost cookies can exceed http-kit's 8 KB default line limit.
+  (reset! stop-server (server/run-server #'handler {:port 8080 :max-line 65536}))
   (println "Serving on http://localhost:8080"))
